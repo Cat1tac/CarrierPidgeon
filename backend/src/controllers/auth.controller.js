@@ -1,6 +1,8 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../lib/utils.js";
+import { sendWelcomeEmail } from "../emails/emailHandler.js";
+import { ENV } from "../lib/env.js";
 
 export const signup = async (req, res) => {
     const {fullName, email, password} = req.body;
@@ -36,7 +38,7 @@ export const signup = async (req, res) => {
 
         if(newUser) {
             //save user to database then generate the token
-            const savedUser = newUser.save();
+            const savedUser = await newUser.save();
             generateToken(savedUser._id, res);
 
             //Status 201 means created successfully
@@ -45,11 +47,18 @@ export const signup = async (req, res) => {
                 fullName:newUser.fullName,
                 email:newUser.email,
                 profilePic:newUser.profilePic,
-            })
+            });
+
+            //Send email 
+            console.log(savedUser.email);
+            try {
+                await sendWelcomeEmail(savedUser.email, savedUser.fullName, ENV.CLIENT_URL);
+            } catch (error) {
+                console.error("Failed to send welcome email:", error);
+            }
         } else {
             res.status(400).json({message:"Invalid user data"})
         }
-        ///Todo send welcome email to user
 
     } catch (error) {
         console.log("Error in signup controller: ", error);
